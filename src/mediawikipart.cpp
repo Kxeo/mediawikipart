@@ -4,11 +4,11 @@
     SPDX-License-Identifier: LGPL-2.1-or-later
 */
 
-#include "markdownpart.hpp"
+#include "mediawikipart.hpp"
 
 // part
-#include "markdownview.hpp"
-#include "markdownbrowserextension.hpp"
+#include "mediawikiview.hpp"
+#include "mediawikibrowserextension.hpp"
 #include "searchtoolbar.hpp"
 // KF
 #include <KPluginMetaData>
@@ -31,12 +31,12 @@
 #include <QVBoxLayout>
 
 
-MarkdownPart::MarkdownPart(QWidget* parentWidget, QObject* parent, const KPluginMetaData& metaData, Modus modus)
+MediaWikiPart::MediaWikiPart(QWidget* parentWidget, QObject* parent, const KPluginMetaData& metaData, Modus modus)
     : KParts::ReadOnlyPart(parent, metaData)
     , m_sourceDocument(new QTextDocument(this))
-    , m_widget(new MarkdownView(m_sourceDocument, parentWidget))
+    , m_widget(new MediaWikiView(m_sourceDocument, parentWidget))
     , m_searchToolBar(new SearchToolBar(m_widget, parentWidget))
-    , m_browserExtension(new MarkdownBrowserExtension(this))
+    , m_browserExtension(new MediaWikiBrowserExtension(this))
 {
     // set internal UI
     auto* mainLayout = new QVBoxLayout;
@@ -53,42 +53,42 @@ MarkdownPart::MarkdownPart(QWidget* parentWidget, QObject* parent, const KPlugin
     setWidget(mainWidget);
 
     // set KXMLUI resource file
-    setXMLFile(QStringLiteral("markdownpartui.rc"));
+    setXMLFile(QStringLiteral("mediawikipartui.rc"));
 
     if (modus == BrowserViewModus) {
-        connect(m_widget, &MarkdownView::anchorClicked,
-                m_browserExtension, &MarkdownBrowserExtension::requestOpenUrl);
-        connect(m_widget, &MarkdownView::copyAvailable,
-                m_browserExtension, &MarkdownBrowserExtension::updateCopyAction);
-        connect(m_widget, &MarkdownView::contextMenuRequested,
-                m_browserExtension, &MarkdownBrowserExtension::requestContextMenu);
+        connect(m_widget, &MediaWikiView::anchorClicked,
+                m_browserExtension, &MediaWikiBrowserExtension::requestOpenUrl);
+        connect(m_widget, &MediaWikiView::copyAvailable,
+                m_browserExtension, &MediaWikiBrowserExtension::updateCopyAction);
+        connect(m_widget, &MediaWikiView::contextMenuRequested,
+                m_browserExtension, &MediaWikiBrowserExtension::requestContextMenu);
     } else {
-        connect(m_widget, &MarkdownView::anchorClicked,
-                this, &MarkdownPart::handleOpenUrlRequest);
-        connect(m_widget, &MarkdownView::contextMenuRequested,
-                this, &MarkdownPart::handleContextMenuRequest);
+        connect(m_widget, &MediaWikiView::anchorClicked,
+                this, &MediaWikiPart::handleOpenUrlRequest);
+        connect(m_widget, &MediaWikiView::contextMenuRequested,
+                this, &MediaWikiPart::handleContextMenuRequest);
     }
-    connect(m_widget, QOverload<const QUrl &>::of(&MarkdownView::highlighted),
-            this, &MarkdownPart::showHoveredLink);
+    connect(m_widget, QOverload<const QUrl &>::of(&MediaWikiView::highlighted),
+            this, &MediaWikiPart::showHoveredLink);
 
     setupActions(modus);
 }
 
-MarkdownPart::~MarkdownPart() = default;
+MediaWikiPart::~MediaWikiPart() = default;
 
 
-void MarkdownPart::setupActions(Modus modus)
+void MediaWikiPart::setupActions(Modus modus)
 {
     // only register to xmlgui if not in browser mode
     QObject* copySelectionActionParent = (modus == BrowserViewModus) ? static_cast<QObject*>(this) : static_cast<QObject*>(actionCollection());
     m_copySelectionAction = KStandardAction::copy(copySelectionActionParent);
     m_copySelectionAction->setText(i18nc("@action", "&Copy Text"));
     m_copySelectionAction->setEnabled(m_widget->hasSelection());
-    connect(m_widget, &MarkdownView::copyAvailable,
+    connect(m_widget, &MediaWikiView::copyAvailable,
             m_copySelectionAction, &QAction::setEnabled);
-    connect(m_copySelectionAction, &QAction::triggered, this, &MarkdownPart::copySelection);
+    connect(m_copySelectionAction, &QAction::triggered, this, &MediaWikiPart::copySelection);
 
-    m_selectAllAction = KStandardActions::selectAll(this, &MarkdownPart::selectAll, actionCollection());
+    m_selectAllAction = KStandardActions::selectAll(this, &MediaWikiPart::selectAll, actionCollection());
     m_selectAllAction->setShortcutContext(Qt::WidgetShortcut);
     m_widget->addAction(m_selectAllAction);
 
@@ -109,7 +109,7 @@ void MarkdownPart::setupActions(Modus modus)
     connect(closeFindBarShortcut, &QShortcut::activated, m_searchToolBar, &SearchToolBar::hide);
 }
 
-bool MarkdownPart::openFile()
+bool MediaWikiPart::openFile()
 {
     QFile file(localFilePath());
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -123,7 +123,7 @@ bool MarkdownPart::openFile()
 
     file.close();
 
-    m_sourceDocument->setMarkdown(text);
+    m_sourceDocument->setMediaWiki(text);
     const QUrl b = QUrl::fromLocalFile(localFilePath()).adjusted(QUrl::RemoveFilename);
     m_sourceDocument->setBaseUrl(b);
 
@@ -136,25 +136,25 @@ bool MarkdownPart::openFile()
     return true;
 }
 
-bool MarkdownPart::doOpenStream(const QString& mimeType)
+bool MediaWikiPart::doOpenStream(const QString& mimeType)
 {
     const QMimeType mime = QMimeDatabase().mimeTypeForName(mimeType);
-    if (!mime.inherits(QStringLiteral("text/markdown"))) {
+    if (!mime.inherits(QStringLiteral("text/mediawiki"))) {
         return false;
     }
 
     m_streamedData.clear();
-    m_sourceDocument->setMarkdown(QString());
+    m_sourceDocument->setMediaWiki(QString());
     return true;
 }
 
-bool MarkdownPart::doWriteStream(const QByteArray& data)
+bool MediaWikiPart::doWriteStream(const QByteArray& data)
 {
     m_streamedData.append(data);
     return true;
 }
 
-bool MarkdownPart::doCloseStream()
+bool MediaWikiPart::doCloseStream()
 {
     QBuffer buffer(&m_streamedData);
 
@@ -168,7 +168,7 @@ bool MarkdownPart::doCloseStream()
     QTextStream stream(&buffer);
     QString text = stream.readAll();
 
-    m_sourceDocument->setMarkdown(text);
+    m_sourceDocument->setMediaWiki(text);
     m_sourceDocument->setBaseUrl(QUrl());
 
     restoreScrollPosition();
@@ -181,7 +181,7 @@ bool MarkdownPart::doCloseStream()
     return true;
 }
 
-bool MarkdownPart::closeUrl()
+bool MediaWikiPart::closeUrl()
 {
     // protect against repeated call if already closed
     const QUrl currentUrl = url();
@@ -190,7 +190,7 @@ bool MarkdownPart::closeUrl()
         m_previousUrl = currentUrl;
     }
 
-    m_sourceDocument->setMarkdown(QString());
+    m_sourceDocument->setMediaWiki(QString());
     m_sourceDocument->setBaseUrl(QUrl());
     m_searchAction->setEnabled(false);
     m_searchNextAction->setEnabled(false);
@@ -200,7 +200,7 @@ bool MarkdownPart::closeUrl()
     return ReadOnlyPart::closeUrl();
 }
 
-void MarkdownPart::prepareViewStateRestoringOnReload()
+void MediaWikiPart::prepareViewStateRestoringOnReload()
 {
     if (url() == m_previousUrl) {
         KParts::OpenUrlArguments args(arguments());
@@ -210,18 +210,18 @@ void MarkdownPart::prepareViewStateRestoringOnReload()
     }
 }
 
-void MarkdownPart::restoreScrollPosition()
+void MediaWikiPart::restoreScrollPosition()
 {
     const KParts::OpenUrlArguments args(arguments());
     m_widget->setScrollPosition({args.xOffset(), args.yOffset()});
 }
 
-void MarkdownPart::handleOpenUrlRequest(const QUrl& url)
+void MediaWikiPart::handleOpenUrlRequest(const QUrl& url)
 {
     QDesktopServices::openUrl(url);
 }
 
-void MarkdownPart::handleContextMenuRequest(QPoint globalPos,
+void MediaWikiPart::handleContextMenuRequest(QPoint globalPos,
                                             const QUrl& linkUrl,
                                             bool hasSelection)
 {
@@ -255,7 +255,7 @@ void MarkdownPart::handleContextMenuRequest(QPoint globalPos,
     }
 }
 
-void MarkdownPart::showHoveredLink(const QUrl& _linkUrl)
+void MediaWikiPart::showHoveredLink(const QUrl& _linkUrl)
 {
     QUrl linkUrl = resolvedUrl(_linkUrl);
     QString message;
@@ -276,12 +276,12 @@ void MarkdownPart::showHoveredLink(const QUrl& _linkUrl)
     Q_EMIT setStatusBarText(message);
 }
 
-QAction* MarkdownPart::copySelectionAction() const
+QAction* MediaWikiPart::copySelectionAction() const
 {
     return m_copySelectionAction;
 }
 
-QAction* MarkdownPart::createCopyEmailAddressAction(QObject* parent, const QUrl& mailtoUrl)
+QAction* MediaWikiPart::createCopyEmailAddressAction(QObject* parent, const QUrl& mailtoUrl)
 {
     auto* action = new QAction(parent);
     action->setText(i18nc("@action", "&Copy Email Address"));
@@ -294,7 +294,7 @@ QAction* MarkdownPart::createCopyEmailAddressAction(QObject* parent, const QUrl&
     return action;
 }
 
-QAction* MarkdownPart::createCopyLinkUrlAction(QObject* parent, const QUrl& linkUrl)
+QAction* MediaWikiPart::createCopyLinkUrlAction(QObject* parent, const QUrl& linkUrl)
 {
     auto* action = new QAction(parent);
     action->setText(i18nc("@action", "Copy Link &URL"));
@@ -307,17 +307,17 @@ QAction* MarkdownPart::createCopyLinkUrlAction(QObject* parent, const QUrl& link
     return action;
 }
 
-void MarkdownPart::copySelection()
+void MediaWikiPart::copySelection()
 {
     m_widget->copy();
 }
 
-void MarkdownPart::selectAll()
+void MediaWikiPart::selectAll()
 {
     m_widget->selectAll();
 }
 
-QUrl MarkdownPart::resolvedUrl(const QUrl &url) const
+QUrl MediaWikiPart::resolvedUrl(const QUrl &url) const
 {
     QUrl u = url;
     if (u.isRelative()) {
@@ -328,4 +328,4 @@ QUrl MarkdownPart::resolvedUrl(const QUrl &url) const
     return (u.adjusted(QUrl::NormalizePathSegments));
 }
 
-#include "moc_markdownpart.cpp"
+#include "moc_mediawikipart.cpp"
