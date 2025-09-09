@@ -4,18 +4,18 @@
     SPDX-License-Identifier: LGPL-2.1-or-later
 */
 
-#include "markdownbrowserextension.hpp"
+#include "mediawikibrowserextension.hpp"
 
 // part
-#include "markdownpart.hpp"
-#include "markdownview.hpp"
+#include "mediawikipart.hpp"
+#include "mediawikiview.hpp"
 // KF
 #include <KActionCollection>
 #include <KLocalizedString>
 // Qt
 #include <QMimeDatabase>
 
-MarkdownBrowserExtension::MarkdownBrowserExtension(MarkdownPart* part)
+MediaWikiBrowserExtension::MediaWikiBrowserExtension(MediaWikiPart* part)
     : KParts::NavigationExtension(part)
     , m_part(part)
     , m_contextMenuActionCollection(new KActionCollection(this))
@@ -23,27 +23,27 @@ MarkdownBrowserExtension::MarkdownBrowserExtension(MarkdownPart* part)
      Q_EMIT enableAction("copy", m_part->view()->hasSelection());
 }
 
-void MarkdownBrowserExtension::copy()
+void MediaWikiBrowserExtension::copy()
 {
     m_part->copySelection();
 }
 
-void MarkdownBrowserExtension::updateCopyAction(bool enabled)
+void MediaWikiBrowserExtension::updateCopyAction(bool enabled)
 {
     Q_EMIT enableAction("copy", enabled);
 }
 
-void MarkdownBrowserExtension::requestOpenUrl(const QUrl& url)
+void MediaWikiBrowserExtension::requestOpenUrl(const QUrl& url)
 {
     Q_EMIT openUrlRequest(m_part->resolvedUrl(url));
 }
 
-void MarkdownBrowserExtension::requestOpenUrlNewWindow(const QUrl& url)
+void MediaWikiBrowserExtension::requestOpenUrlNewWindow(const QUrl& url)
 {
     Q_EMIT createNewWindow(m_part->resolvedUrl(url));
 }
 
-void MarkdownBrowserExtension::requestContextMenu(QPoint globalPos,
+void MediaWikiBrowserExtension::requestContextMenu(QPoint globalPos,
                                                   const QUrl& linkUrl,
                                                   bool hasSelection)
 {
@@ -62,7 +62,7 @@ void MarkdownBrowserExtension::requestContextMenu(QPoint globalPos,
 
     if (!linkUrl.isValid()) {
         emitUrl = m_part->url();
-        mimeType = QStringLiteral("text/markdown");
+        mimeType = QStringLiteral("text/mediawiki");
 
         if (hasSelection) {
             flags |= ShowTextSelectionItems;
@@ -121,14 +121,14 @@ void MarkdownBrowserExtension::requestContextMenu(QPoint globalPos,
     Q_EMIT popupMenu(globalPos, emitUrl, static_cast<mode_t>(-1), args, flags, mapAction);
 }
 
-int MarkdownBrowserExtension::xOffset()
+int MediaWikiBrowserExtension::xOffset()
 {
     return m_part->view()->scrollPositionX();
 }
 
-int MarkdownBrowserExtension::yOffset()
+int MediaWikiBrowserExtension::yOffset()
 {
     return m_part->view()->scrollPositionY();
 }
 
-#include "moc_markdownbrowserextension.cpp"
+#include "moc_mediawikibrowserextension.cpp"
